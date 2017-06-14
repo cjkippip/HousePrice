@@ -1,16 +1,17 @@
 # -*- coding: UTF-8 -*-
-
+import math
 import numpy as np
 import pandas as pd
+from etl import ETL
 from sklearn import preprocessing
 from sklearn import metrics
-from etl import ETL
 from sklearn.model_selection import ShuffleSplit
-import math
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 
 LOCAL_CONFIG = {
     'METHODS': ['lr', 'lasso', 'dt', 'rf', 'gb', 'adb'],
-    'METHOD': 'gb'
+    'METHOD': 'rf'
 }
 
 
@@ -48,7 +49,7 @@ class Model:
         X_train1, X_test1 = self.normalize(X_train1, X_test1)
 
         # training
-        kf = ShuffleSplit(n_splits=5, test_size=0.25, random_state=0)
+        kf = ShuffleSplit(n_splits=5, test_size=0.25, random_state=123)
         rmsles = []
         for train_indices, test_indices in kf.split(X_train1):
             X_train = X_train1[train_indices, :]
@@ -56,6 +57,7 @@ class Model:
             X_test = X_train1[test_indices, :]
             y_test = y[test_indices]
             model.fit(X_train, y_train)
+            print(model.best_params_)
             y_pred = model.predict(X_test)
 
             rmsle = self.rmsle(y_pred, y_test)
@@ -79,8 +81,14 @@ class Model:
             self.method_pattern(dt)
         elif method == 'rf':
             from sklearn.ensemble import RandomForestRegressor
+            para_grid = {
+                'n_estimators': list(range(200, 600, 100)),
+                'max_features': list(range(100, 280, 30))
+            }
             rf = RandomForestRegressor()
-            self.method_pattern(rf)
+            search = GridSearchCV(estimator=rf, param_grid=para_grid)
+            print(search)
+            self.method_pattern(search)
         elif method == 'gb':
             from sklearn.ensemble import GradientBoostingRegressor
             gb = GradientBoostingRegressor()
